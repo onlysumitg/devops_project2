@@ -1,0 +1,14 @@
+<VirtualHost *:80>
+   ServerAdmin webmaster@localhost
+   ServerName wordpress
+   ServerAlias www.wordpress
+   DocumentRoot /var/www/wordpress
+   ErrorLog /var/log/httpd/error.log
+   CustomLog /var/log/httpd/access.log combined
+ 
+   <Directory /var/www/wordpress>
+         Options Indexes FollowSymLinks
+     AllowOverride all
+     Require all granted
+   </Directory>
+</VirtualHost>

@@ -1,0 +1,94 @@
+---
+- hosts: all
+  become: True
+  tasks:
+    - name: install PHP and components
+      yum: name={{ item }} update_cache=yes state=latest
+      loop: [ 'php', 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-xmlrpc', 'php-soap', 'php-intl', 'php-zip','php-json' ]
+  
+    - name: intall MYSQL and components
+      yum: name={{ item }} update_cache=yes state=latest
+      loop: [ 'mysql-server', 'php-mysqlnd'    ]
+
+    - name: Start mysqld service
+      systemd: name=mysqld state=started enabled=yes
+  
+ 
+
+
+    - name: Creates database for WordPress
+      mysql_db:
+        name: "worddb"
+        state: present
+        login_user: root
+        login_password: "rootpass"
+
+
+    - name: Create MySQL user for WordPress
+      mysql_user:
+        name: "wordpress"
+        password: "wordpress"
+        priv: "worddb.*:ALL"
+        state: present
+        login_user: root
+        login_password: "rootpass"
+
+    - name: Install apache http server
+      yum: name=httpd update_cache=yes state=latest
+
+    - name: Start httpd service
+      systemd: name=httpd state=started enabled=yes
+
+
+    - name: Create document root
+      file:
+        path: "/var/www/wordpress"
+        state: directory
+        owner: "apache"
+        group: "apache"
+        mode: '0755'
+      
+
+    - name: Set up Apache VirtualHost
+      template:
+        src: "files/httpd.conf.j2"
+        dest: "/etc/httpd/conf.d/wordpress.conf"
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+
+    - name: Download WordPress
+      unarchive:
+        src: https://wordpress.org/latest.tar.gz
+        dest: "/var/www"
+        remote_src: yes
+
+    - name: Update wordpress config
+      template:
+        src: "files/wp-config.php.j2"
+        dest: "/var/www/wordpress/wp-config.php"
+              
+ 
+
+    - name: Set permissions for directories
+      shell: "/usr/bin/find /var/ -type d -exec chmod 777 {} \\;"
+
+    - name: Set permissions for directories
+      shell: "/usr/bin/find /var/www/ -type d -exec chmod 777 {} \\;"
+
+    - name: Set permissions for directories
+      shell: "/usr/bin/find /var/www/wordpress/ -type d -exec chmod 777 {} \\;"
+
+    - name: Set permissions for files
+      shell: "/usr/bin/find /var/www/wordpress/ -type f -exec chmod 777 {} \\;"
+      notify: Restart Apache
+  handlers:
+    - name: Reload Apache
+      service:
+        name: httpd
+        state: reloaded
+
+    - name: Restart Apache
+      service:
+        name: httpd
+        state: restarted
